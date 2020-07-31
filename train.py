@@ -4,9 +4,7 @@ import torch
 from dataset import COVID19DataSet
 import model
 import utils
-
-
-
+from test import validate
 
 
 def train(epoch, net, trainloader, criterion, optimizer, device):
@@ -30,7 +28,6 @@ def main():
     utils.set_seed(args.seed, device) # set random seed
 
     dataset = COVID19DataSet(args.datapath) # load dataset
-    img, label = dataset[1]
     
     net = model.setup_model(args.model).to(device)
     
@@ -39,8 +36,10 @@ def main():
     criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=1e-4)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.bstrain, shuffle=True, num_workers = args.nworkers)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=args.bstrain, shuffle=False, num_workers = args.nworkers)
     for epoch in range(args.maxepoch):
         net = train(epoch, net, trainloader, criterion, optimizer, device)
+        auroc, aupr, f1_score, accuracy = validate(net, testloader, device)
     # net = train(net, trainset, device)
 
     # test(net, test_data)
@@ -59,7 +58,7 @@ if __name__ == "__main__":
     parser.add_argument('--bstrain', type=int, default=32, help='batch size for training')
     parser.add_argument('--bstest', type=int, default=64, help='batch size for testing')
     parser.add_argument('--nworkers', type=int, default=2, help='the number of workers used in DataLoader')
-    parser.add_argument('--maxepoch', type=int, default=200, help='the number of epoches')
+    parser.add_argument('--maxepoch', type=int, default=100, help='the number of epoches')
     parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
     args = parser.parse_args()
     main()
