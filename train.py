@@ -2,8 +2,7 @@ import argparse
 import torch
 
 from dataset import COVID19DataSet
-# import model
-import mobilenet
+from Model import mobilenet_v2
 import utils
 from test import validate
 
@@ -25,13 +24,14 @@ def train(epoch, net, trainloader, criterion, optimizer, device):
 
 
 def main():
+
     device = utils.get_device()
     utils.set_seed(args.seed, device) # set random seed
 
     dataset = COVID19DataSet(args.datapath) # load dataset
     
     # net = model.setup_model(args.model).to(device)
-    net = mobilenet.mobilenet_v2(pretrained = True, num_classes = 1).to(device)
+    net = mobilenet_v2(pretrained = True, num_classes = 1).to(device)
     
     ntrain = int(0.8*len(dataset)) # 80% of the data is set to be a training dataset
     trainset, testset = torch.utils.data.random_split(dataset, (ntrain, len(dataset)-ntrain))

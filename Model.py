@@ -258,7 +258,8 @@ def predict(X_test, model = None):
     # import os
     # cwd = os.getcwd()
     # state = torch.load('model.pth')
-    state = torch.load("/home/medieason/QSRDC2020/upload/5f237d13e14548571f93276a/model.pth")
+    # state = torch.load("/home/medieason/QSRDC2020/upload/5f237d13e14548571f93276a/model.pth")
+    state = torch.load(model+"model.pth")
     net.load_state_dict(state)
     dataset = COVID19DataSetTest(X_test)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1)

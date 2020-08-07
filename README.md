@@ -1,8 +1,9 @@
 ### TODO
-- [ ] weighted binary cross entropy
 - [x] test routine: accuracy, F1 score, AUC score
+- [ ] weighted binary cross entropy
 - [ ] gathering other dataset for lung segmentation
 - [ ] lung segment augmentation 
+- [ ] contrastive self-supervised learning (CSSL) loss 
 
 ### Current Performance
 approximately....
