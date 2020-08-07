@@ -2,7 +2,8 @@ import argparse
 import torch
 
 from dataset import COVID19DataSet
-import model
+# import model
+import mobilenet
 import utils
 from test import validate
 
@@ -29,7 +30,8 @@ def main():
 
     dataset = COVID19DataSet(args.datapath) # load dataset
     
-    net = model.setup_model(args.model).to(device)
+    # net = model.setup_model(args.model).to(device)
+    net = mobilenet.mobilenet_v2(pretrained = True, num_classes = 1).to(device)
     
     ntrain = int(0.8*len(dataset)) # 80% of the data is set to be a training dataset
     trainset, testset = torch.utils.data.random_split(dataset, (ntrain, len(dataset)-ntrain))
@@ -39,14 +41,13 @@ def main():
     testloader = torch.utils.data.DataLoader(testset, batch_size=args.bstrain, shuffle=False, num_workers = args.nworkers)
     for epoch in range(args.maxepoch):
         net = train(epoch, net, trainloader, criterion, optimizer, device)
-        auroc, aupr, f1_score, accuracy = validate(net, testloader, device)
-    # net = train(net, trainset, device)
+        if epoch%10 == 0:
+            auroc, aupr, f1_score, accuracy = validate(net, testloader, device)
+    auroc, aupr, f1_score, accuracy = validate(net, testloader, device)
+    net = net.to('cpu')
+    state = net.state_dict()
+    torch.save(state, 'model.pth')
 
-    # test(net, test_data)
-
-
-
-    
     return True
 
 
