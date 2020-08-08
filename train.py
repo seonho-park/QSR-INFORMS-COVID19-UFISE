@@ -38,7 +38,7 @@ def main():
     criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=1e-4)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.bstrain, shuffle=True, num_workers = args.nworkers)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=args.bstrain, shuffle=False, num_workers = args.nworkers)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=args.bstest, shuffle=False, num_workers = args.nworkers)
     for epoch in range(args.maxepoch):
         net = train(epoch, net, trainloader, criterion, optimizer, device)
         if epoch%10 == 0:

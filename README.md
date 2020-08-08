@@ -17,3 +17,7 @@ approximately....
 ## Training
 
 ## Testing
+
+## Lung Segmentation
+- Download lung segmentation CT data from https://www.kaggle.com/kmader/finding-lungs-in-ct-data/
+- Used UNet. refer to https://github.com/usuyama/pytorch-unet
