@@ -6,6 +6,7 @@
 - [ ] weighted binary cross entropy
 - [ ] contrastive self-supervised learning (CSSL) loss 
 - [ ] implement other CNN architectures
+- [ ] hyperparameter tuning based on multiple tests with different seeds 
 
 ### Current Performance
 Tested on AUG 8 2020
