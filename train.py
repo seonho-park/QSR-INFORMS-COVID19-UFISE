@@ -135,14 +135,6 @@ def split_dataset(dataset, root):
 def main():
     device = utils.get_device()
     utils.set_seed(args.seed, device) # set random seed
-    # np.random.seed(args.seed)
-    # torch.manual_seed(args.seed)
-    # idx = torch.randperm(10)
-    # print(idx)
-    # if device == 'cuda':
-    #     torch.cuda.manual_seed_all(args.seed)
-    #     torch.backends.cudnn.deterministic = True
-    #     torch.backends.cudnn.benchmark = False
 
     dataset = COVID19DataSet(root = args.datapath) # load dataset
     trainset, testset = split_dataset(dataset = dataset, root = args.datapath)
