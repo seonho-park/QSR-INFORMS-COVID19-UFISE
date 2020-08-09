@@ -2,6 +2,7 @@ import os
 import argparse
 import torch
 import pandas as pd
+import numpy as np
 
 from dataset import COVID19DataSet
 from Model import mobilenet_v2
@@ -48,18 +49,17 @@ def split_dataset(dataset, root):
         else:
             pid_fn_dict[pid] = [fn]
 
-    pid_covid_unique = list(set(pid_covid))
-    print("The number of COVID19 patients:", len(pid_covid_unique))
+    pid_covid_unique = sorted(list(set(pid_covid)))
     indices = torch.randperm(len(pid_covid_unique))
     pid_train = indices[:int(NTRAIN_RATIO*len(pid_covid_unique))]
     pid_test = indices[int(NTRAIN_RATIO*len(pid_covid_unique)):]
-
 
     indices_covid_train = []    
     for i in pid_train:
         pid = pid_covid_unique[i]
         fns = pid_fn_dict[pid]
         for fn in fns:
+            # print(i, pid, fns)
             if fn in imgpath_dict:
                 indices_covid_train.append(imgpath_dict[fn])
             else:
@@ -91,8 +91,7 @@ def split_dataset(dataset, root):
         else:
             pid_fn_dict[pid] = [fn]
 
-    pid_noncovid_unique = list(set(pid_noncovid))
-    print("The number of Non COVID19 patients:", len(pid_noncovid_unique))
+    pid_noncovid_unique = sorted(list(set(pid_noncovid)))
     indices = torch.randperm(len(pid_noncovid_unique))
     pid_train = indices[:int(NTRAIN_RATIO*len(pid_noncovid_unique))]
     pid_test = indices[int(NTRAIN_RATIO*len(pid_noncovid_unique)):]
@@ -136,6 +135,14 @@ def split_dataset(dataset, root):
 def main():
     device = utils.get_device()
     utils.set_seed(args.seed, device) # set random seed
+    # np.random.seed(args.seed)
+    # torch.manual_seed(args.seed)
+    # idx = torch.randperm(10)
+    # print(idx)
+    # if device == 'cuda':
+    #     torch.cuda.manual_seed_all(args.seed)
+    #     torch.backends.cudnn.deterministic = True
+    #     torch.backends.cudnn.benchmark = False
 
     dataset = COVID19DataSet(root = args.datapath) # load dataset
     trainset, testset = split_dataset(dataset = dataset, root = args.datapath)
@@ -144,7 +151,7 @@ def main():
     net = mobilenet_v2(pretrained = True, num_classes = 1).to(device)
     
     criterion = torch.nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=1e-3)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.1)   
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.bstrain, shuffle=True, num_workers = args.nworkers)
     testloader = torch.utils.data.DataLoader(testset, batch_size=args.bstest, shuffle=False, num_workers = args.nworkers)

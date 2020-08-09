@@ -15,6 +15,7 @@ def get_device():
 
 
 def set_seed(seed, device):
+    np.random.seed(seed)
     torch.manual_seed(seed)
     if device == 'cuda':
         torch.cuda.manual_seed_all(seed)
