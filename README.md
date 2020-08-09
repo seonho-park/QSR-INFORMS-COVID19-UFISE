@@ -2,16 +2,21 @@
 - [x] test routine: accuracy, F1 score, AUC score
 - [x] gathering other dataset for lung segmentation
 - [x] lung segment augmentation 
+- [x] split test/training set based on patient ID
 - [ ] weighted binary cross entropy
-- [ ] split test/training set based on patient ID
 - [ ] contrastive self-supervised learning (CSSL) loss 
+- [ ] implement other CNN architectures
 
 ### Current Performance
-approximately....
-- AUROC: 0.9841
-- AUPR: 9755
-- Accuracy: 0.95
-- F1 score: 0.95
+Tested on AUG 8 2020
+- AUROC: 0.9939
+- AUPR: 0.9949
+- Accuracy: 0.9450
+- F1 score: 0.9455
+
+Tested on Aug 9 2020
+- AUROC: 0.7430 | AUPR: 0.6281 | F1-score: 0.6549 | Accuracy: 0.6638
+- This is lower than previous result, mainly due to using patient IDs when splitting dataset into training/test datasets
 
 ## Requirements
 - check requirements.txt

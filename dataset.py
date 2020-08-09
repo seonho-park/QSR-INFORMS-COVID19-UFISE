@@ -5,26 +5,36 @@ import scipy.signal as ss
 import scipy.ndimage as snd
 import skimage.transform as skt
 from PIL import Image
+import glob
+import os
 
+import pandas as pd
 
-class COVID19DataSet(torchvision.datasets.ImageFolder):
-    def __init__(self, data_path, dims=[480,480]): # from the reference... the size of the image is 480 by 480
-        super(COVID19DataSet, self).__init__(root=data_path)
+class COVID19DataSet(torch.utils.data.Dataset):
+    def __init__(self, root, dims=[480,480]): # from the reference... the size of the image is 480 by 480
         self.dims = dims # dimension of the image 
-        self.class_to_idx = {'CT_COVID': 1, 'CT_NonCOVID': 0}
-        self.targets = (-1*(np.asarray(self.targets)-1)).tolist() # swarp the indices... 1 for covid and 0 for noncovid
+        imgs_covid = sorted(glob.glob(os.path.join(root, 'Images-processed', 'CT_COVID', '*.*')))
+        imgs_noncovid = sorted(glob.glob(os.path.join(root, 'Images-processed', 'CT_NonCOVID', '*.*')))
+        self.imgs = imgs_covid + imgs_noncovid
+        self.labels = [1]*len(imgs_covid) + [0]*len(imgs_noncovid)
+
+        lungsegs_covid = sorted(glob.glob(os.path.join(root, 'lung_segmentation', 'CT_COVID', '*.*')))
+        lungsegs_noncovid = sorted(glob.glob(os.path.join(root, 'lung_segmentation', 'CT_NonCOVID', '*.*')))
+        self.lungsegs = lungsegs_covid+lungsegs_noncovid
+
+        assert len(self.imgs) == len(self.lungsegs)
+        assert len(self.labels) == len(self.lungsegs)
+
+    def __len__(self):
+        return len(self.imgs)
 
 
     def __getitem__(self, idx):
         # img, label = super(COVID19DataSet, self).__getitem__(idx)
-        label = self.targets[idx]
-        img = Image.open(self.samples[idx][0]).convert('RGB')
+        
+        img = Image.open(self.imgs[idx]).convert('L')
         img = np.asarray(img) # convert to numpy array, order: HxWxC
         img = img.astype(np.float32)/255. # normalize value to [0.,1.]
-
-        if img.shape[2] > 3: # bypass RGBA case
-            img = img[:,:,0:3]
-        
         # adjust brightness
         img = skt.resize(img, (self.dims[0], self.dims[1]), mode='constant', anti_aliasing=False)
         bandwidth = 255
@@ -38,11 +48,19 @@ class COVID19DataSet(torchvision.datasets.ImageFolder):
             hmin = np.nonzero(hf)[0][0] /bandwidth
             hmax = np.nonzero(hf)[0][-1]/bandwidth
             img = (img - hmin) / (hmax - hmin)
+        
+        # lung segmentation
+        lungseg = Image.open(self.lungsegs[idx]).convert('L')
+        lungseg = np.asarray(lungseg)
+        lungseg = lungseg.astype(np.float32)/255.
+        lungseg = skt.resize(lungseg, (self.dims[0], self.dims[1]), mode='constant', anti_aliasing=False) # resize
+
         # img = torch.from_numpy(img).unsqueeze(0).float()
-        img = np.transpose(img,(2,0,1)) #change the order to CxHxW
-        img = torch.from_numpy(img).float()
-        label = torch.FloatTensor([label])
-        return img, label
+        # img = np.transpose(img,(2,0,1)) #change the order to CxHxW
+        img = torch.from_numpy(img).unsqueeze(0).float()
+        lungseg = torch.from_numpy(lungseg).unsqueeze(0).float()
+        label = torch.FloatTensor([self.labels[idx]])
+        return img, lungseg, label
 
 
 # class COVID19DataSetTest(torch.utils.data.Dataset):

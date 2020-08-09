@@ -9,11 +9,12 @@ def validate(net, testloader, device):
     probs = []
     gts = []
     with torch.no_grad():
-        for batch_idx, (imgs, labels) in enumerate(testloader):
+        for batch_idx, (imgs, lungsegs, labels) in enumerate(testloader):
             imgs = imgs.to(device)
+            lungsegs = lungsegs.to(device)
             # labels = labels.to(device)
             # optimizer.zero_grad()
-            logits = net(imgs)
+            logits = net(imgs, lungsegs)
             probs.append(torch.sigmoid(logits))
             gts.append(labels)
             # loss = criterion(logits, labels)
