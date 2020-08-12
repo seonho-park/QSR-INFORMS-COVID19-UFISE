@@ -105,7 +105,7 @@ class InvertedResidual(nn.Module):
 
 class MobileNetV2(nn.Module):
     def __init__(self,
-                 num_classes=1000,
+                 num_classes=1,
                  width_mult=1.0,
                  inverted_residual_setting=None,
                  round_nearest=8,
@@ -195,10 +195,10 @@ class MobileNetV2(nn.Module):
         x = self.classifier_new(x)
         return x
 
-    def forward(self, x, lungseg):
-        x = x.repeat(1, 2, 1, 1)
-        x = torch.cat([x, lungseg], dim=1)
-
+    def forward(self, x, lungseg=None):
+        if lungseg is not None:
+            x = x.repeat(1, 2, 1, 1)
+            x = torch.cat([x, lungseg], dim=1)
         return self._forward_impl(x)
 
 
