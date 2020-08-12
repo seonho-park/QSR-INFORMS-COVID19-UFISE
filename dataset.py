@@ -10,6 +10,33 @@ import os
 
 import pandas as pd
 
+
+class CTImageAdjustment(object):
+
+    def __init__(self, dims=[480,480]):
+        self.dims = dims
+
+    def __call__(self, x):
+        img = np.asarray(x) # convert to numpy array, order: HxWxC
+        img = img.astype(np.float32)/255. # normalize value to [0.,1.]
+        # adjust brightness
+        img = skt.resize(img, (self.dims[0], self.dims[1]), mode='constant', anti_aliasing=False)
+        bandwidth = 255
+        img = (img - img.min()) / (img.max() - img.min())
+        imhist = (img * bandwidth).astype(np.uint8)
+        h = np.histogram(imhist.flatten(), bins=bandwidth+1)
+        hmed = ss.medfilt(h[0], kernel_size=51)
+        hf = snd.gaussian_filter(hmed, sigma=25)
+        hf = np.maximum(0, hf - len(img.flatten())*0.001) # reject 0.1% of mass
+        if np.max(hf) > 0:
+            hmin = np.nonzero(hf)[0][0] /bandwidth
+            hmax = np.nonzero(hf)[0][-1]/bandwidth
+            img = (img - hmin) / (hmax - hmin)
+        img = Image.fromarray(img, mode = 'RGB')
+        return img
+
+
+
 class COVID19DataSet(torch.utils.data.Dataset):
     def __init__(self, root, dims=[480,480]): # from the reference... the size of the image is 480 by 480
         self.dims = dims # dimension of the image 
