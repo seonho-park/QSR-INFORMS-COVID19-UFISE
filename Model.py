@@ -195,10 +195,9 @@ class MobileNetV2(nn.Module):
         x = self.classifier_new(x)
         return x
 
-    def forward(self, x, lungseg=None):
-        if lungseg is not None:
-            x = x.repeat(1, 2, 1, 1)
-            x = torch.cat([x, lungseg], dim=1)
+    def forward(self, x, lungseg):
+        x = x.repeat(1, 2, 1, 1)
+        x = torch.cat([x, lungseg], dim=1)
         return self._forward_impl(x)
 
 

@@ -139,8 +139,17 @@ def main():
     dataset = COVID19DataSet(root = args.datapath) # load dataset
     trainset, testset = split_dataset(dataset = dataset, root = args.datapath)
     
-    # net = model.setup_model(args.model).to(device)
-    net = mobilenet_v2(pretrained = True, num_classes = 1).to(device)
+    # net = mobilenet_v2(pretrained = True, num_classes = 1).to(device)
+    net = mobilenet_v2(pretrained = False, num_classes = 128)
+    state = torch.load("./chpt/moco_output.pth.tar")["state_dict"]
+    state_dict = {k.replace('encoder_q.',''):state[k] for k in state.keys() if 'encoder_q' in k}
+    net.load_state_dict(state_dict)
+    net.classifier_new = torch.nn.Sequential(
+            torch.nn.Dropout(0.2),
+            torch.nn.Linear(1280, 1),
+        )
+    net = net.to(device)
+
     
     criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=1e-3)
@@ -148,8 +157,8 @@ def main():
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.bstrain, shuffle=True, num_workers = args.nworkers)
     testloader = torch.utils.data.DataLoader(testset, batch_size=args.bstest, shuffle=False, num_workers = args.nworkers)
     for epoch in range(args.maxepoch):
-        scheduler.step()
         net = train(epoch, net, trainloader, criterion, optimizer, device)
+        scheduler.step()
         if epoch%10 == 0:
             auroc, aupr, f1_score, accuracy = validate(net, testloader, device)
     auroc, aupr, f1_score, accuracy = validate(net, testloader, device)

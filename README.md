@@ -3,9 +3,9 @@
 - [x] gathering other dataset for lung segmentation
 - [x] lung segment augmentation 
 - [x] split test/training set based on patient ID
-- [ ] weighted binary cross entropy
-- [ ] contrastive self-supervised learning (CSSL) loss 
-- [ ] implement other CNN architectures
+- [x] contrastive self-supervised learning (CSSL) loss 
+- [ ] data augmentation (e.g. random cropping)
+- [ ] implement other CNN architectures (DenseNet-BC)
 - [ ] hyperparameter tuning based on multiple tests with different seeds 
 
 ### Current Performance

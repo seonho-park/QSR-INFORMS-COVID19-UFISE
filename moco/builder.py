@@ -72,11 +72,12 @@ class MoCo(nn.Module):
         *** Only support DistributedDataParallel (DDP) model. ***
         """
         # gather from all gpus
-        batch_size_this = x.shape[0]
-        x_gather = concat_all_gather(x)
-        batch_size_all = x_gather.shape[0]
+        # batch_size_this = x.shape[0]
+        # x_gather = concat_all_gather(x)
+        # batch_size_all = x_gather.shape[0]
+        batch_size_all = x[0].size(0)
 
-        num_gpus = batch_size_all // batch_size_this
+        # num_gpus = batch_size_all // batch_size_this
 
         # random shuffle index
         idx_shuffle = torch.randperm(batch_size_all).cuda()
@@ -90,9 +91,9 @@ class MoCo(nn.Module):
         # shuffled index for this gpu
         # gpu_idx = torch.distributed.get_rank()
         # idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx]
-        idx_this = idx_shuffle
+        # idx_this = idx_shuffle
 
-        return x_gather[idx_this], idx_unshuffle
+        return (x[0][idx_shuffle], x[1][idx_shuffle]), idx_unshuffle
 
     @torch.no_grad()
     def _batch_unshuffle_ddp(self, x, idx_unshuffle):
@@ -101,18 +102,20 @@ class MoCo(nn.Module):
         *** Only support DistributedDataParallel (DDP) model. ***
         """
         # gather from all gpus
-        batch_size_this = x.shape[0]
-        x_gather = concat_all_gather(x)
-        batch_size_all = x_gather.shape[0]
+        # batch_size_this = x[0].shape[0]
+        # x_gather = concat_all_gather(x)
+        # batch_size_all = x_gather.shape[0]
+        # batch_size_all = batch_size_this
 
         # num_gpus = batch_size_all // batch_size_this
 
         # restored index for this gpu
         # gpu_idx = torch.distributed.get_rank()
         # idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
-        idx_this = idx_unshuffle
+        # idx_this = idx_unshuffle
 
-        return x_gather[idx_this]
+        # return x_gather[idx_this]
+        return x[idx_unshuffle]
 
     def forward(self, im_q, im_k):
         """
@@ -124,7 +127,7 @@ class MoCo(nn.Module):
         """
 
         # compute query features
-        q = self.encoder_q(im_q)  # queries: NxC
+        q = self.encoder_q(*im_q)  # queries: NxC
         q = nn.functional.normalize(q, dim=1)
 
         # compute key features
@@ -134,7 +137,7 @@ class MoCo(nn.Module):
             # shuffle for making use of BN
             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
-            k = self.encoder_k(im_k)  # keys: NxC
+            k = self.encoder_k(*im_k)  # keys: NxC
             k = nn.functional.normalize(k, dim=1)
 
             # undo shuffle

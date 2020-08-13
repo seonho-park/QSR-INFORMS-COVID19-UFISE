@@ -25,23 +25,16 @@ import torchvision.models as models
 import moco.loader
 import moco.builder
 import dataset
+import utils
 from Model import mobilenet_v2
+from dataset import COVID19DataSet
 
 if not os.path.isdir('./moco_chpt'):
         os.mkdir('./moco_chpt')
 
-# model_names = sorted(name for name in models.__dict__
-#     if name.islower() and not name.startswith("__")
-#     and callable(models.__dict__[name]))
-
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--data', metavar='DIR', default='/home/sean/data/COVID-CT QSR Data Challenge/COVID-CT QSR Data Challenge/Images-processed',
+parser.add_argument('--data', metavar='DIR', default='/home/sean/data/COVID-CT QSR Data Challenge/COVID-CT QSR Data Challenge',
                     help='path to dataset')
-# parser.add_argument('-a', '--arch', metavar='ARCH', default='mobilenet_v2',
-#                     choices=model_names,
-#                     help='model architecture: ' +
-#                         ' | '.join(model_names) +
-#                         ' (default: resnet50)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
 parser.add_argument('--epochs', default=10, type=int, metavar='N',
@@ -70,21 +63,8 @@ parser.add_argument('--world-size', default=1, type=int,
                     help='number of nodes for distributed training')
 parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed training')
-# parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
-#                     help='url used to set up distributed training')
-parser.add_argument('--dist-url', default='tcp://localhost:10001', type=str,
-                    help='url used to set up distributed training')
-parser.add_argument('--dist-backend', default='nccl', type=str,
-                    help='distributed backend')
-parser.add_argument('--seed', default=None, type=int,
+parser.add_argument('--seed', default=1, type=int,
                     help='seed for initializing training. ')
-parser.add_argument('--gpu', default=None, type=int,
-                    help='GPU id to use.')
-parser.add_argument('--multiprocessing-distributed', action='store_true',
-                    help='Use multi-processing distributed training to launch '
-                         'N processes per node, which has N GPUs. This is the '
-                         'fastest way to use PyTorch for either single node or '
-                         'multi node data parallel training')
 
 # moco specific configs:
 parser.add_argument('--moco-dim', default=128, type=int,
@@ -106,6 +86,7 @@ parser.add_argument('--cos', action='store_true',
 
 
 def main():
+    
     args = parser.parse_args()
     # moco v2
     # args.mlp = True
@@ -115,42 +96,15 @@ def main():
     args.epochs = 100
     args.moco_k = 1024
 
-    if args.seed is not None:
-        random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        cudnn.deterministic = True
-        warnings.warn('You have chosen to seed training. '
-                      'This will turn on the CUDNN deterministic setting, '
-                      'which can slow down your training considerably! '
-                      'You may see unexpected behavior when restarting '
-                      'from checkpoints.')
-
-    if args.gpu is not None:
-        warnings.warn('You have chosen a specific GPU. This will completely '
-                      'disable data parallelism.')
-
-    if args.dist_url == "env://" and args.world_size == -1:
-        args.world_size = int(os.environ["WORLD_SIZE"])
-
-    args.distributed = args.world_size > 1 or args.multiprocessing_distributed
+    device = utils.get_device()
+    utils.set_seed(args.seed, device) # set random seed
 
     ngpus_per_node = torch.cuda.device_count()
-    main_worker(args.gpu, ngpus_per_node, args)
-
-    # if args.multiprocessing_distributed:
-    #     # Since we have ngpus_per_node processes per node, the total world_size
-    #     # needs to be adjusted accordingly
-    #     args.world_size = ngpus_per_node * args.world_size
-    #     # Use torch.multiprocessing.spawn to launch distributed processes: the
-    #     # main_worker process function
-    #     mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
-    # else:
-    #     # Simply call main_worker function
-    #     main_worker(args.gpu, ngpus_per_node, args)
+    main_worker(args, device)
 
 
-def main_worker(gpu, ngpus_per_node, args):
-    args.gpu = gpu
+def main_worker(args, device):
+    # args.gpu = gpu
 
     # # suppress printing if not master
     # if args.multiprocessing_distributed and args.gpu != 0:
@@ -178,9 +132,7 @@ def main_worker(gpu, ngpus_per_node, args):
     #     args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     model = moco.builder.MoCo(
         mobilenet_v2,
-        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
-
-    model.to('cuda')
+        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp).to(device)
 
     # if args.distributed:
     #     # For multiprocessing distributed, DistributedDataParallel constructor
@@ -211,7 +163,8 @@ def main_worker(gpu, ngpus_per_node, args):
     #     raise NotImplementedError("Only DistributedDataParallel is supported.")
 
     # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    # criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    criterion = nn.CrossEntropyLoss().to(device)
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
@@ -239,48 +192,50 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # Data loading code
     # traindir = os.path.join(args.data, 'train')
-    traindir = args.data
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-    if args.aug_plus:
-        # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
-        # augmentation = [
-        #     transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
-        #     transforms.RandomApply([
-        #         transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
-        #     ], p=0.8),
-        #     transforms.RandomGrayscale(p=0.2),
+    # traindir = args.data
+    # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+    #                                  std=[0.229, 0.224, 0.225])
+    # if args.aug_plus:
+    #     # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
+    #     # augmentation = [
+    #     #     transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
+    #     #     transforms.RandomApply([
+    #     #         transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
+    #     #     ], p=0.8),
+    #     #     transforms.RandomGrayscale(p=0.2),
+    #     #     transforms.RandomApply([moco.loader.GaussianBlur([.1, 2.])], p=0.5),
+    #     #     transforms.RandomHorizontalFlip(),
+    #     #     transforms.ToTensor(),
+    #     #     normalize
+    #     # ]
+        # augmentation = [ # TODO: check
+        #     transforms.RandomResizedCrop(480, scale=(0.8, 1.)),
+        #     # transforms.RandomApply([
+        #     #     transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
+        #     # ], p=0.8),
+        #     # transforms.RandomGrayscale(p=0.2),
         #     transforms.RandomApply([moco.loader.GaussianBlur([.1, 2.])], p=0.5),
+        #     transforms.RandomApply([dataset.CTImageAdjustment()], p=1.),
         #     transforms.RandomHorizontalFlip(),
         #     transforms.ToTensor(),
-        #     normalize
+        #     # normalize
         # ]
-        augmentation = [
-            transforms.RandomResizedCrop(480, scale=(0.8, 1.)),
-            # transforms.RandomApply([
-            #     transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
-            # ], p=0.8),
-            # transforms.RandomGrayscale(p=0.2),
-            transforms.RandomApply([moco.loader.GaussianBlur([.1, 2.])], p=0.5),
-            transforms.RandomApply([dataset.CTImageAdjustment()], p=1.),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            # normalize
-        ]
-    else:
-        # MoCo v1's aug: the same as InstDisc https://arxiv.org/abs/1805.01978
-        augmentation = [
-            transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
-            transforms.RandomGrayscale(p=0.2),
-            transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize
-        ]
-
-    train_dataset = datasets.ImageFolder(
-        traindir,
-        moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+    # else:
+    #     # MoCo v1's aug: the same as InstDisc https://arxiv.org/abs/1805.01978
+    #     augmentation = [
+    #         transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
+    #         transforms.RandomGrayscale(p=0.2),
+    #         transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
+    #         transforms.RandomHorizontalFlip(),
+    #         transforms.ToTensor(),
+    #         normalize
+    #     ]
+    # transform = dataset.CTImageAdjustment()
+    transform = None
+    # train_dataset = datasets.ImageFolder(
+    #     traindir,
+    #     moco.loader.TwoCropsTransform(transform))
+    train_dataset = COVID19DataSet(root = args.data)
 
     # if args.distributed:
     #     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -298,19 +253,16 @@ def main_worker(gpu, ngpus_per_node, args):
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+        train(train_loader, model, criterion, optimizer, epoch, args, device)
 
-        if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.rank % ngpus_per_node == 0):
-            save_checkpoint({
-                'epoch': epoch + 1,
-                # 'arch': args.arch,
-                'state_dict': model.state_dict(),
-                'optimizer' : optimizer.state_dict(),
-            }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
+        save_checkpoint({
+            'epoch': epoch + 1,
+            'state_dict': model.state_dict(),
+            'optimizer' : optimizer.state_dict(),
+        }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(train_loader, model, criterion, optimizer, epoch, args, device):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -325,21 +277,22 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     model.train()
 
     end = time.time()
-    for i, (images, _) in enumerate(train_loader):
+    for i, (images, lungsegs, _) in enumerate(train_loader):
         # measure data loading time
-        if images[0].size(0) != args.batch_size: 
+        if images.size(0) != args.batch_size: 
             continue
         data_time.update(time.time() - end)
 
-        # if args.gpu is not None:
-        #     images[0] = images[0].cuda(args.gpu, non_blocking=True)
-        #     images[1] = images[1].cuda(args.gpu, non_blocking=True)
+        images = images.to(device)
+        lungsegs = lungsegs.to(device)
 
-        images[0] = images[0].to('cuda')
-        images[1] = images[1].to('cuda')
+        # images[0] = images[0].to('cuda')
+        # images[1] = images[1].to('cuda')
+        
         
         # compute output
-        output, target = model(im_q=images[0], im_k=images[1])
+        # output, target = model(im_q=images[0], im_k=images[1])
+        output, target = model(im_q=(images,lungsegs), im_k=(images,lungsegs))
         loss = criterion(output, target)
 
         # acc1/acc5 are (K+1)-way contrast classifier accuracy
