@@ -26,7 +26,7 @@ import moco.loader
 import moco.builder
 import dataset
 import utils
-from Model import mobilenet_v2
+from Model import mobilenet_v2, densenet121
 from dataset import COVID19DataSet
 
 if not os.path.isdir('./moco_chpt'):
@@ -84,22 +84,24 @@ parser.add_argument('--aug-plus', action='store_true',
 parser.add_argument('--cos', action='store_true',
                     help='use cosine lr schedule')
 
+parser.add_argument('--model', type=str, default='densenet', help='backbone architecture mobilenet|densenet')
 
 def main():
     
     args = parser.parse_args()
     # moco v2
     # args.mlp = True
-    args.aug_plus = True
+    # args.aug_plus = True
     args.cos = True
     args.lr = 0.005
-    args.epochs = 100
+    args.epochs = 200
     args.moco_k = 1024
+    args.batch_size = 8
 
     device = utils.get_device()
     utils.set_seed(args.seed, device) # set random seed
 
-    ngpus_per_node = torch.cuda.device_count()
+    # ngpus_per_node = torch.cuda.device_count()
     main_worker(args, device)
 
 
@@ -130,9 +132,13 @@ def main_worker(args, device):
     # model = moco.builder.MoCo(
     #     models.__dict__[args.arch],
     #     args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
-    model = moco.builder.MoCo(
-        mobilenet_v2,
-        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp).to(device)
+    if args.model.lower() in ['mobilenet']:
+        archi = mobilenet_v2
+    elif args.model.lower() in ['densenet']:
+        archi = densenet121
+    else:
+        raise Exception
+    model = moco.builder.MoCo(archi,args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp).to(device)
 
     # if args.distributed:
     #     # For multiprocessing distributed, DistributedDataParallel constructor
@@ -231,11 +237,11 @@ def main_worker(args, device):
     #         normalize
     #     ]
     # transform = dataset.CTImageAdjustment()
-    transform = None
+    # transform = None
     # train_dataset = datasets.ImageFolder(
     #     traindir,
     #     moco.loader.TwoCropsTransform(transform))
-    train_dataset = COVID19DataSet(root = args.data)
+    train_dataset = COVID19DataSet(ctonly = False, root = args.data)
 
     # if args.distributed:
     #     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -259,7 +265,7 @@ def main_worker(args, device):
             'epoch': epoch + 1,
             'state_dict': model.state_dict(),
             'optimizer' : optimizer.state_dict(),
-        }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
+        }, is_best=False, filename='moco_{}_{:04d}.pth'.format(args.model, epoch))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args, device):

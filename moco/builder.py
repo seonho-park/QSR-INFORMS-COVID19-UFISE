@@ -23,8 +23,8 @@ class MoCo(nn.Module):
 
         # create the encoders
         # num_classes is the output fc dimension
-        self.encoder_q = base_encoder(pretrained=True, num_classes=dim)
-        self.encoder_k = base_encoder(pretrained=True, num_classes=dim)
+        self.encoder_q = base_encoder(task='moco', pretrained=True, num_classes=dim)
+        self.encoder_k = base_encoder(task='moco', pretrained=True, num_classes=dim)
 
         if mlp:  # hack: brute-force replacement
             dim_mlp = self.encoder_q.fc.weight.shape[1]

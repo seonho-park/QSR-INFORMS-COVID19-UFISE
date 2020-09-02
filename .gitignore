@@ -1,5 +1,11 @@
 __pycache__/
 .vscode
 
+temp_result.txt
+
 moco_chpt/**
 chpt/**
+results/**
+batchout/**
+gradcam_output/**
+figure_output/**

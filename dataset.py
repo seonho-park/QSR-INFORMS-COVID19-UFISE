@@ -7,6 +7,7 @@ import skimage.transform as skt
 from PIL import Image
 import glob
 import os
+import random
 
 import pandas as pd
 
@@ -38,7 +39,8 @@ class CTImageAdjustment(object):
 
 
 class COVID19DataSet(torch.utils.data.Dataset):
-    def __init__(self, root, dims=[480,480]): # from the reference... the size of the image is 480 by 480
+    def __init__(self, root, ctonly, dims=[480,480]): # from the reference... the size of the image is 480 by 480
+        self.ctonly = ctonly
         self.dims = dims # dimension of the image 
         imgs_covid = sorted(glob.glob(os.path.join(root, 'Images-processed', 'CT_COVID', '*.*')))
         imgs_noncovid = sorted(glob.glob(os.path.join(root, 'Images-processed', 'CT_NonCOVID', '*.*')))
@@ -51,15 +53,26 @@ class COVID19DataSet(torch.utils.data.Dataset):
 
         assert len(self.imgs) == len(self.lungsegs)
         assert len(self.labels) == len(self.lungsegs)
+        self.set_indices_train(list(range(len(self))))
+
+    def set_indices_train(self, indices_train):
+        self.indices_train = indices_train
 
     def __len__(self):
         return len(self.imgs)
 
-
     def __getitem__(self, idx):
-        # img, label = super(COVID19DataSet, self).__getitem__(idx)
+        if random.random() < 0.5 and idx in self.indices_train:
+            hflip = True
+        else: 
+            hflip = False
         
-        img = Image.open(self.imgs[idx]).convert('L')
+        label = torch.FloatTensor([self.labels[idx]])
+        
+        img = Image.open(self.imgs[idx]).convert('L') # greyscale
+        if hflip:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+
         img = np.asarray(img) # convert to numpy array, order: HxWxC
         img = img.astype(np.float32)/255. # normalize value to [0.,1.]
         # adjust brightness
@@ -75,20 +88,23 @@ class COVID19DataSet(torch.utils.data.Dataset):
             hmin = np.nonzero(hf)[0][0] /bandwidth
             hmax = np.nonzero(hf)[0][-1]/bandwidth
             img = (img - hmin) / (hmax - hmin)
+            # img = np.maximum(0,img)
+            # img = np.minimum(1.,img)
+        img = torch.from_numpy(img).unsqueeze(0).float()
         
         # lung segmentation
-        lungseg = Image.open(self.lungsegs[idx]).convert('L')
-        lungseg = np.asarray(lungseg)
-        lungseg = lungseg.astype(np.float32)/255.
-        lungseg = skt.resize(lungseg, (self.dims[0], self.dims[1]), mode='constant', anti_aliasing=False) # resize
-
-        # img = torch.from_numpy(img).unsqueeze(0).float()
-        # img = np.transpose(img,(2,0,1)) #change the order to CxHxW
-        img = torch.from_numpy(img).unsqueeze(0).float()
-        lungseg = torch.from_numpy(lungseg).unsqueeze(0).float()
-        label = torch.FloatTensor([self.labels[idx]])
-        return img, lungseg, label
-
+        if not self.ctonly:
+            lungseg = Image.open(self.lungsegs[idx]).convert('L') # greyscale
+            if hflip:
+                lungseg = lungseg.transpose(Image.FLIP_LEFT_RIGHT)
+            lungseg = np.asarray(lungseg)
+            lungseg = lungseg.astype(np.float32)/255.
+            lungseg = skt.resize(lungseg, (self.dims[0], self.dims[1]), mode='constant', anti_aliasing=False) # resize
+            lungseg = torch.from_numpy(lungseg).unsqueeze(0).float()
+            return img, lungseg, label
+        else:
+            pseudo_lungseg = torch.FloatTensor([0.])
+            return img, pseudo_lungseg, label
 
 # class COVID19DataSetTest(torch.utils.data.Dataset):
 #     def __init__(self, x_test):

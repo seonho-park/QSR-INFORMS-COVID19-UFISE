@@ -8,6 +8,8 @@ from Model import predict
 def validate(net, testloader, device):
     probs = []
     gts = []
+    net.eval() # eval mode
+
     with torch.no_grad():
         for batch_idx, (imgs, lungsegs, labels) in enumerate(testloader):
             imgs = imgs.to(device)
@@ -36,6 +38,7 @@ def validate(net, testloader, device):
     num_correct = (preds == gts).sum()
     accuracy = num_correct/gts.shape[0]
     print('  AUROC: %5.4f | AUPR: %5.4f | F1_Score: %5.4f | Accuracy: %5.4f (%d/%d)'%(auroc, aupr, f1, accuracy, num_correct, gts.shape[0]))
+    
 
     return auroc, aupr, f1, accuracy
 
