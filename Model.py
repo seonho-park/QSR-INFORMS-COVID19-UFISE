@@ -922,9 +922,9 @@ def predict(X_test, model = ""):
     lungseg_net = ResNetUNet() # load model
 
     # state = torch.load("/home/medieason/QSRDC2020/upload/5f237d13e14548571f93276a/model.pth")
-    # state = torch.load(model+"/model.pth") # for submission
-    state = torch.load("model.pth")
-
+    # state = torch.load("model.pth")
+    state = torch.load(model+"/model.pth") # for submission
+    
     net.load_state_dict(state['classifier'])
     lungseg_net.load_state_dict(state['lungseg'])
     dataset = COVID19DataSetTest(X_test)
@@ -988,7 +988,7 @@ def estimate(X_train, y_train):
     when we trained classifier model for deployment, the lung segmentation image outputs are saved as images, and loader 
     again loads the lung segmentation images to feed into the classifier model. 
     However, here, we cannot do that. Instead, we predict the lung segmentation image online and feed into the model along with CT images.
-    Because of this, we cannot allocate larger batch size (For example, for our training, we used batch_size=32), 
+    Because of this, we cannot allocate larger batch size (For example, for our training, we used batch_size=32 and batch_size_test=64), 
     instead, we set batch_size to 5
 
     When it comes to splitting the dataset into training and validation (here, 'testset') data sets, 
@@ -998,8 +998,8 @@ def estimate(X_train, y_train):
 
     lr = 0.001
     batch_size = 5
-    batch_size_test = 64
-    maxepoch= 1
+    batch_size_test = 5
+    maxepoch= 100
     
     net = mobilenet_v2(task = 'classification', moco = False, ctonly = False)
     dataset = COVID19DataSet(X_train, y_train)
