@@ -1,12 +1,14 @@
 # script for submission
 
 import re
+import random
 import torch
 import torchvision
 import numpy as np
 import scipy.signal as ss
 import scipy.ndimage as snd
 import skimage.transform as skt
+from sklearn.metrics import roc_auc_score, precision_recall_curve, auc, f1_score
 from collections import OrderedDict
 from PIL import Image
 
@@ -396,14 +398,7 @@ def _load_state_dict(model, model_url, progress):
             state_dict[new_key] = state_dict[key]
             del state_dict[key]
     return state_dict
-    # model.load_state_dict(state_dict)
 
-# def _densenet(arch, growth_rate, block_config, num_init_features, pretrained, progress,
-#               **kwargs):
-    
-#     if pretrained:
-#         _load_state_dict(model, model_urls[arch], progress)
-#     return model
 
 def densenet121(task, progress = True, moco=False, ctonly=False, **kwargs):
     kwargs['num_classes'] = 128 # moco_dim
@@ -523,54 +518,6 @@ class BasicBlock(nn.Module):
 
         return out
 
-
-# class Bottleneck(nn.Module):
-#     # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
-#     # while original implementation places the stride at the first 1x1 convolution(self.conv1)
-#     # according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
-#     # This variant is also known as ResNet V1.5 and improves accuracy according to
-#     # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
-
-#     expansion = 4
-
-#     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
-#                  base_width=64, dilation=1, norm_layer=None):
-#         super(Bottleneck, self).__init__()
-#         if norm_layer is None:
-#             norm_layer = nn.BatchNorm2d
-#         width = int(planes * (base_width / 64.)) * groups
-#         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
-#         self.conv1 = conv1x1(inplanes, width)
-#         self.bn1 = norm_layer(width)
-#         self.conv2 = conv3x3(width, width, stride, groups, dilation)
-#         self.bn2 = norm_layer(width)
-#         self.conv3 = conv1x1(width, planes * self.expansion)
-#         self.bn3 = norm_layer(planes * self.expansion)
-#         self.relu = nn.ReLU(inplace=True)
-#         self.downsample = downsample
-#         self.stride = stride
-
-#     def forward(self, x):
-#         identity = x
-
-#         out = self.conv1(x)
-#         out = self.bn1(out)
-#         out = self.relu(out)
-
-#         out = self.conv2(out)
-#         out = self.bn2(out)
-#         out = self.relu(out)
-
-#         out = self.conv3(out)
-#         out = self.bn3(out)
-
-#         if self.downsample is not None:
-#             identity = self.downsample(x)
-
-#         out += identity
-#         out = self.relu(out)
-
-#         return out
 
 class ResNet(nn.Module):
 
@@ -692,44 +639,6 @@ def resnet18(pretrained=False, progress=True, **kwargs):
                    **kwargs)
 
 
-
-# def resnet34(pretrained=False, progress=True, **kwargs):
-#     r"""ResNet-34 model from
-#     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
-
-#     Args:
-#         pretrained (bool): If True, returns a model pre-trained on ImageNet
-#         progress (bool): If True, displays a progress bar of the download to stderr
-#     """
-#     return _resnet('resnet34', BasicBlock, [3, 4, 6, 3], pretrained, progress,
-#                    **kwargs)
-
-
-
-# def resnet50(pretrained=False, progress=True, **kwargs):
-#     r"""ResNet-50 model from
-#     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
-
-#     Args:
-#         pretrained (bool): If True, returns a model pre-trained on ImageNet
-#         progress (bool): If True, displays a progress bar of the download to stderr
-#     """
-#     return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress,
-#                    **kwargs)
-
-
-
-# def resnet101(pretrained=False, progress=True, **kwargs):
-#     r"""ResNet-101 model from
-#     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
-
-#     Args:
-#         pretrained (bool): If True, returns a model pre-trained on ImageNet
-#         progress (bool): If True, displays a progress bar of the download to stderr
-#     """
-#     return _resnet('resnet101', Bottleneck, [3, 4, 23, 3], pretrained, progress,
-#                    **kwargs)
-
 def convrelu(in_channels, out_channels, kernel, padding):
     return nn.Sequential(
         nn.Conv2d(in_channels, out_channels, kernel, padding=padding),
@@ -746,6 +655,8 @@ class ResNetUNet(nn.Module):
         self.base_layers = list(self.base_model.children())                
         
         self.layer0 = nn.Sequential(*self.base_layers[:3]) # size=(N, 64, x.H/2, x.W/2)
+        self.layer0[0].weight = torch.nn.Parameter(self.layer0[0].weight[:,:1,:,:]) # only use 1 channel of input
+        
         self.layer0_1x1 = convrelu(64, 64, 1, 0)
         self.layer1 = nn.Sequential(*self.base_layers[3:5]) # size=(N, 64, x.H/4, x.W/4)        
         self.layer1_1x1 = convrelu(64, 64, 1, 0)       
@@ -763,14 +674,14 @@ class ResNetUNet(nn.Module):
         self.conv_up1 = convrelu(64 + 256, 256, 3, 1)
         self.conv_up0 = convrelu(64 + 256, 128, 3, 1)
         
-        self.conv_original_size0 = convrelu(3, 64, 3, 1)
+        # self.conv_original_size0 = convrelu(3, 64, 3, 1)
+        self.conv_original_size0 = convrelu(1, 64, 3, 1)
         self.conv_original_size1 = convrelu(64, 64, 3, 1)
         self.conv_original_size2 = convrelu(64 + 128, 64, 3, 1)
         
         self.conv_last = nn.Conv2d(64, n_class, 1)
         
     def forward(self, input):
-        input = input.repeat(1, 3, 1, 1)
         x_original = self.conv_original_size0(input)
         x_original = self.conv_original_size1(x_original)
         
@@ -812,8 +723,7 @@ class ResNetUNet(nn.Module):
 def ctprocessing(img):
     img = np.asarray(img)
     img = img.astype(np.float32)/255. # normalize value to [0.,1.]
-    # if img.shape[2] > 3: # bypass RGBA case
-    #     img = img[:,:,0:3]
+
     # adjust brightness
     img = skt.resize(img, (480,480), mode='constant', anti_aliasing=False)
     bandwidth = 255
@@ -827,9 +737,46 @@ def ctprocessing(img):
         hmin = np.nonzero(hf)[0][0] /bandwidth
         hmax = np.nonzero(hf)[0][-1]/bandwidth
         img = (img - hmin) / (hmax - hmin)
-    # img = torch.from_numpy(img).unsqueeze(0).float()
-    # img = np.transpose(img,(2,0,1)) #change the order to CxHxW
     return img
+
+
+class COVID19DataSet(torch.utils.data.Dataset):
+    def __init__(self, X_train, y_train): # from the reference... the size of the image is 480 by 480
+        self.imgs = np.reshape(np.array(X_train),[len(X_train),])
+        self.labels = np.asarray(y_train)
+        assert self.imgs.shape[0] == self.labels.shape[0]
+
+        self.set_indices_train(list(range(len(self))))
+
+    def set_indices_train(self, indices_train):
+        self.indices_train = indices_train
+
+    def __len__(self):
+        return self.imgs.shape[0]
+
+    def __getitem__(self, idx):
+        if random.random() < 0.5 and idx in self.indices_train:
+            hflip = True
+        else: 
+            hflip = False
+        
+        # label = torch.FloatTensor([self.labels[idx]])
+        if self.labels[idx] in ['COVID']:
+            label = torch.FloatTensor([1.])
+        else:
+            label = torch.FloatTensor([0.])
+        
+        img = self.imgs[idx]
+        img = Image.fromarray(img)
+        img = img.convert("L") # change to greyscale
+        
+        if hflip:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+
+        img = ctprocessing(img)
+        img = torch.from_numpy(img).unsqueeze(0).float()
+        
+        return img, label
 
 class COVID19DataSetTest(torch.utils.data.Dataset):
     def __init__(self, x_test):
@@ -843,18 +790,140 @@ class COVID19DataSetTest(torch.utils.data.Dataset):
         x = self.x_test[idx]
         img = Image.fromarray(x).convert('L')
         img = ctprocessing(img)
-        img = torch.from_numpy(img).float()
+        img = torch.from_numpy(img).unsqueeze(0).float()
         return img
 
 
+class LungSegDataSet(torch.utils.data.Dataset):
+    def __init__(self, imgs, masks):
+        assert imgs.shape[0] == masks.shape[0] # the number of images
+        self.imgs = imgs
+        self.masks = masks
+        self.dims = [480,480]
+    
+    def __len__(self):
+        return self.imgs.shape[0]
+    
+    def __getitem__(self, idx):   
+        hflip = True if random.random() < 0.5 else False
+        img = self.imgs[idx]
+        if hflip:
+            img = Image.fromarray(img)
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            img = np.asarray(img)
+        img = ctprocessing(img)
+        img = torch.from_numpy(img).unsqueeze(0).float()
+
+        mask = self.masks[idx]
+        if hflip:
+            mask = Image.fromarray(mask)
+            mask = mask.transpose(Image.FLIP_LEFT_RIGHT)
+            mask = np.asarray(mask)
+        mask = np.asarray(mask)
+        mask = mask.astype(np.float32)/255.
+        
+
+        mask = skt.resize(mask, (self.dims[0], self.dims[1]), mode='constant', anti_aliasing=False)
+        mask = torch.from_numpy(mask).unsqueeze(0).float()
+        
+        return img, mask
+
+
+def dice_loss(pred, target, smooth = 1.):
+    pred = pred.contiguous()
+    target = target.contiguous()    
+
+    intersection = (pred * target).sum(dim=2).sum(dim=2)
+    
+    loss = (1 - ((2. * intersection + smooth) / (pred.sum(dim=2).sum(dim=2) + target.sum(dim=2).sum(dim=2) + smooth)))
+    
+    return loss.mean()
+
+def calc_loss(pred, target, bce_weight=0.5):
+    bce = F.binary_cross_entropy_with_logits(pred, target)
+        
+    pred = torch.sigmoid(pred)
+    dice = dice_loss(pred, target)
+    
+    loss = bce * bce_weight + dice * (1 - bce_weight)
+    return loss
+
+def train_lungseg(epoch, net, trainloader, optimizer, device):
+    net.train()  # Set model to training mode
+    train_loss = 0.
+    epoch_samples = 0
+    for batch_idx, (imgs, labels) in enumerate(trainloader):
+        imgs = imgs.to(device)
+        labels = labels.to(device)
+        optimizer.zero_grad()
+        outputs = net(imgs)
+        loss = calc_loss(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        train_loss += loss.item()
+        epoch_samples += imgs.size(0)
+        print('  Training... Epoch: %4d | Iter: %4d/%4d | Train Loss: %.4f'%(epoch, batch_idx+1, len(trainloader), train_loss/(batch_idx+1)), end = '\r')
+    print('')
+    return net
+
+def train_classifier(epoch, net, lungseg_net, trainloader, criterion, optimizer, device):
+    net.train() # train mode
+    train_loss = 0.
+    
+    for batch_idx, (imgs, labels) in enumerate(trainloader):
+        imgs = imgs.to(device)
+        labels = labels.to(device)
+        lungsegs = lungseg_net(imgs)
+        optimizer.zero_grad()
+        
+        logits = net(imgs, lungsegs)
+        loss = criterion(logits, labels)
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
+        print('  Training... Epoch: %4d | Iter: %4d/%4d | Train Loss: %.4f'%(epoch, batch_idx+1, len(trainloader), train_loss/(batch_idx+1)), end = '\r')
+    print('')
+
+    return net
+
+
+def validate_classifier(net, testloader, device):
+    probs = []
+    gts = []
+    net.eval() # eval mode
+
+    with torch.no_grad():
+        for batch_idx, (imgs, lungsegs, labels) in enumerate(testloader):
+            imgs = imgs.to(device)
+            lungsegs = lungsegs.to(device)
+            logits = net(imgs, lungsegs)
+            probs.append(torch.sigmoid(logits))
+            gts.append(labels)
+
+    probs = torch.cat(probs, dim=0)
+    preds = torch.round(probs).cpu().numpy()
+    probs = probs.cpu().numpy()
+    gts = torch.cat(gts, dim=0).cpu().numpy()
+    auroc = roc_auc_score(gts, probs)
+    precision, recall, thresholds = precision_recall_curve(gts, probs)
+    aupr = auc(recall, precision)
+    f1 = f1_score(gts, preds)
+
+    num_correct = (preds == gts).sum()
+    accuracy = num_correct/gts.shape[0]
+    print('  AUROC: %5.4f | AUPR: %5.4f | F1_Score: %5.4f | Accuracy: %5.4f (%d/%d)'%(auroc, aupr, f1, accuracy, num_correct, gts.shape[0]))
+    
+    return auroc, aupr, f1, accuracy
+
+# MAIN FUNCTION
 def predict(X_test, model = ""):
     net = mobilenet_v2(task = 'classification', moco = False, ctonly = False)
     lungseg_net = ResNetUNet() # load model
 
     # state = torch.load("/home/medieason/QSRDC2020/upload/5f237d13e14548571f93276a/model.pth")
-    state = torch.load(model+"/model.pth")
-    # state = torch.load("model.pth")
-
+    # state = torch.load(model+"/model.pth") # for submission
+    state = torch.load("model.pth")
 
     net.load_state_dict(state['classifier'])
     lungseg_net.load_state_dict(state['lungseg'])
@@ -874,7 +943,7 @@ def predict(X_test, model = ""):
             lungseg = lungseg.astype(np.float32)/255.
             lungseg = skt.resize(lungseg, (480, 480), mode='constant', anti_aliasing=False) # resize
             lungseg = torch.from_numpy(lungseg).unsqueeze(0).float()
-            logit = net(img.unsqueeze(0), lungseg.unsqueeze(0))
+            logit = net(img, lungseg.unsqueeze(0))
             pred = torch.sigmoid(logit)
             print(pred)
             if pred.item() > 0.5:
@@ -883,3 +952,77 @@ def predict(X_test, model = ""):
                 y_pred.append('NonCOVID')
     return y_pred
 
+# MAIN FUNCTION
+def estimate(X_train, y_train):
+    """ 
+    estimate function to show the procedure of training the models
+    Our training procedure is two-fold: 1) lung segmentation model 2) COVID19 classification
+    """
+    # 1) training lung segmentation
+    """
+    please download the following two files and place into the directory where 'Model.py' is located.
+    lungseg_imgs.npy: https://drive.google.com/file/d/1GMReqHQuDJIKWoiP10lI_h0rtbRA6zkM/view?usp=sharing
+    lungseg_masks.npy: https://drive.google.com/file/d/1TFuxCklBVHO4s9ai4jgsvQPsqb7Jdlox/view?usp=sharing
+    """
+    maxepoch= 100
+    batch_size = 10
+    lungseg_imgs = np.load("lungseg_imgs.npy", allow_pickle = True)
+    lungseg_masks = np.load("lungseg_masks.npy", allow_pickle = True)
+    lungseg_dataset = LungSegDataSet(lungseg_imgs, lungseg_masks)
+    
+    # device = "cuda"
+    device = 'cpu'
+    lungseg_net = ResNetUNet(n_class=1).to(device)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, lungseg_net.parameters()), lr=1e-4)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.1)   
+    trainloader = torch.utils.data.DataLoader(lungseg_dataset, batch_size=batch_size, shuffle=True, num_workers = 1)
+    for epoch in range(maxepoch):
+        lungseg_net = train_lungseg(epoch, lungseg_net, trainloader, optimizer, device)
+        scheduler.step()
+
+    del lungseg_dataset
+
+
+    # 2) training classifier for COVID19
+    """
+    when we trained classifier model for deployment, the lung segmentation image outputs are saved as images, and loader 
+    again loads the lung segmentation images to feed into the classifier model. 
+    However, here, we cannot do that. Instead, we predict the lung segmentation image online and feed into the model along with CT images.
+    Because of this, we cannot allocate larger batch size (For example, for our training, we used batch_size=32), 
+    instead, we set batch_size to 5
+
+    When it comes to splitting the dataset into training and validation (here, 'testset') data sets, 
+    we used CT image-patient pair information included in "CT-MetaInfo.xlsx".
+    But here, we cannot use this information, thus, we randomly split the dataset.
+    """
+
+    lr = 0.001
+    batch_size = 5
+    batch_size_test = 64
+    maxepoch= 1
+    
+    net = mobilenet_v2(task = 'classification', moco = False, ctonly = False)
+    dataset = COVID19DataSet(X_train, y_train)
+    ndata = len(dataset)
+    ntrain = int(0.8*ndata) # split dataset into training and test data sets
+    indices = torch.randperm(ndata).tolist()
+    trainset = torch.utils.data.Subset(dataset, indices[:ntrain])
+    testset = torch.utils.data.Subset(dataset, indices[ntrain:])
+    dataset.set_indices_train(trainset.indices)
+
+    criterion = torch.nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=1e-3)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.1)   
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers = 1)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=False, num_workers = 1)
+
+    print('==> Start training ..')   
+    lungseg_net.eval() # lung segmentation is set to eval mode
+    for epoch in range(maxepoch):
+        net = train_classifier(epoch, net, lungseg_net, trainloader, criterion, optimizer, device)
+        scheduler.step()
+        if epoch%5 == 0:
+            validate_classifier(net, testloader, device)
+
+    model_dict = {'classifier': net.to('cpu').state_dict() , 'lungseg': lungseg_net.to('cpu').state_dict()}
+    return model_dict

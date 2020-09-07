@@ -28,8 +28,8 @@ def process(net, img_fn):
         hmin = np.nonzero(hf)[0][0] /bandwidth
         hmax = np.nonzero(hf)[0][-1]/bandwidth
         img = (img - hmin) / (hmax - hmin)
-    img = np.expand_dims(img, 0)
-    img = torch.from_numpy(img).float()
+    # img = np.expand_dims(img, 0)
+    img = torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float()
 
     output = torch.sigmoid(net(img)).detach().cpu().numpy().squeeze() * 255.
     output = skt.resize(output, org_dim, mode='constant', anti_aliasing=False)
@@ -40,12 +40,12 @@ def process(net, img_fn):
 
 def main():
     input_root = "/home/sean/data/COVID-CT QSR Data Challenge/COVID-CT QSR Data Challenge/Images-processed"
-    output_root = "/home/sean/data/COVID-CT QSR Data Challenge/COVID-CT QSR Data Challenge/lung_segmentation"
+    output_root = "/home/sean/data/COVID-CT QSR Data Challenge/COVID-CT QSR Data Challenge/lung_segmentation2"
     covid_img_list = sorted(glob.glob(os.path.join(input_root, "CT_COVID", '*.*')))
     noncovid_img_list = sorted(glob.glob(os.path.join(input_root, "CT_NonCOVID", '*.*')))
 
     net = ResNetUNet() # load model
-    net.load_state_dict(torch.load("lungseg_net.pth"))
+    net.load_state_dict(torch.load("lungseg_net2.pth"))
 
     for i, img_fn in enumerate(covid_img_list):
         img_filename = os.path.basename(img_fn)

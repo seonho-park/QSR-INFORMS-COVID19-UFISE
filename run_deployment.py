@@ -31,6 +31,7 @@ def main():
         scheduler.step()
         if epoch%5 == 0:
             auroc, aupr, f1_score, accuracy = validate(net, testloader, device)
+
     
     # load lungseg state_dict
     state_dict_lungseg = torch.load("lungseg_net.pth")

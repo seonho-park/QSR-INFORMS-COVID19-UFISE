@@ -1,0 +1,2 @@
+paths: [train_lungseg, train_classifier, validate_classifier]
+Estimated time to run (in seconds): 250000

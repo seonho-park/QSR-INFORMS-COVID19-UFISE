@@ -4,6 +4,7 @@ import torchvision
 from collections import defaultdict
 import os
 import glob
+import random
 import argparse
 import numpy as np
 import scipy.signal as ss
@@ -25,11 +26,17 @@ class LungSegDataSet(torch.utils.data.Dataset):
         return len(self.img_list)
 
     def __getitem__(self, idx):   
+        hflip = True if random.random() < 0.5 else False
+
         img = Image.open(self.img_list[idx])
+        if hflip:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
         img = np.asarray(img) # convert to numpy array, order: HxWxC
         img = img.astype(np.float32)/255. # normalize value to [0.,1.]
         
         mask = Image.open(self.mask_list[idx])
+        if hflip:
+            mask = mask.transpose(Image.FLIP_LEFT_RIGHT)
         mask = np.asarray(mask)
         mask = mask.astype(np.float32)/255.
         
@@ -46,12 +53,10 @@ class LungSegDataSet(torch.utils.data.Dataset):
             hmin = np.nonzero(hf)[0][0] /bandwidth
             hmax = np.nonzero(hf)[0][-1]/bandwidth
             img = (img - hmin) / (hmax - hmin)
-        img = np.expand_dims(img, 0)
-        img = torch.from_numpy(img).float()
+        img = torch.from_numpy(img).unsqueeze(0).float()
 
         mask = skt.resize(mask, (self.dims[0], self.dims[1]), mode='constant', anti_aliasing=False)
-        mask = np.expand_dims(mask, 0)
-        mask = torch.from_numpy(mask).float()
+        mask = torch.from_numpy(mask).unsqueeze(0).float()
         
         return img, mask
 
@@ -124,7 +129,7 @@ def main():
         net = train(epoch, net, trainloader, optimizer, device)
     net = net.to('cpu')
     state = net.state_dict()
-    torch.save(state, 'lungseg_net.pth')
+    torch.save(state, 'lungseg_net2.pth')
     
 
 if __name__ == "__main__":

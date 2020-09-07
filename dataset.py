@@ -47,8 +47,8 @@ class COVID19DataSet(torch.utils.data.Dataset):
         self.imgs = imgs_covid + imgs_noncovid
         self.labels = [1]*len(imgs_covid) + [0]*len(imgs_noncovid)
 
-        lungsegs_covid = sorted(glob.glob(os.path.join(root, 'lung_segmentation', 'CT_COVID', '*.*')))
-        lungsegs_noncovid = sorted(glob.glob(os.path.join(root, 'lung_segmentation', 'CT_NonCOVID', '*.*')))
+        lungsegs_covid = sorted(glob.glob(os.path.join(root, 'lung_segmentation2', 'CT_COVID', '*.*')))
+        lungsegs_noncovid = sorted(glob.glob(os.path.join(root, 'lung_segmentation2', 'CT_NonCOVID', '*.*')))
         self.lungsegs = lungsegs_covid+lungsegs_noncovid
 
         assert len(self.imgs) == len(self.lungsegs)
