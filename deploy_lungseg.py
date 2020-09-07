@@ -10,8 +10,6 @@ import skimage.transform as skt
 
 from Model import ResNetUNet
 
-# import utils
-
 
 def process(net, img_fn):
     img = Image.open(img_fn).convert('L') # test image

@@ -9,8 +9,6 @@ from test import validate
 
 
 def main():
-    # logger, result_dir, _ = utils.config_backup_get_log(args,__file__)
-
     device = utils.get_device()
     utils.set_seed(args.seed, device) # set random seed
 

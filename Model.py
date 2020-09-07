@@ -852,8 +852,8 @@ def predict(X_test, model = ""):
     lungseg_net = ResNetUNet() # load model
 
     # state = torch.load("/home/medieason/QSRDC2020/upload/5f237d13e14548571f93276a/model.pth")
-    # state = torch.load(model+"/model.pth")
-    state = torch.load("model.pth")
+    state = torch.load(model+"/model.pth")
+    # state = torch.load("model.pth")
 
 
     net.load_state_dict(state['classifier'])

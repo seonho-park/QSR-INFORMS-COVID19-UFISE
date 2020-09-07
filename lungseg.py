@@ -113,16 +113,12 @@ def main():
     utils.set_seed(args.seed, device) # set random seed
 
     dataset = LungSegDataSet(args.datapath)
-    # ntrain = int(0.8*len(dataset)) # 80% of the data is set to be a training dataset
-    # trainset, testset = torch.utils.data.random_split(dataset, (ntrain, len(dataset)-ntrain))
     
     net = ResNetUNet(n_class=1).to(device)
     
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=1e-4)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.1)   
     trainloader = torch.utils.data.DataLoader(dataset, batch_size=args.bstrain, shuffle=True, num_workers = args.nworkers)
-    # trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.bstrain, shuffle=True, num_workers = args.nworkers)
-    # testloader = torch.utils.data.DataLoader(testset, batch_size=args.bstest, shuffle=False, num_workers = args.nworkers)
     for epoch in range(args.maxepoch):
         scheduler.step()
         net = train(epoch, net, trainloader, optimizer, device)

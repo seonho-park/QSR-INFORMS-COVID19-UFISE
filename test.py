@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-# from torch.nn import functional as F
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc, f1_score
 from Model import predict
 
@@ -14,18 +13,10 @@ def validate(net, testloader, device):
         for batch_idx, (imgs, lungsegs, labels) in enumerate(testloader):
             imgs = imgs.to(device)
             lungsegs = lungsegs.to(device)
-            # labels = labels.to(device)
-            # optimizer.zero_grad()
             logits = net(imgs, lungsegs)
             probs.append(torch.sigmoid(logits))
             gts.append(labels)
-            # loss = criterion(logits, labels)
-            # loss.backward()
-            # optimizer.step()
-            # train_loss += loss.item()
-            # print('  Training... Epoch: %4d | Iter: %4d/%4d | Train Loss: %.4f'%(epoch, batch_idx+1, len(trainloader), train_loss/(batch_idx+1)), end = '\r')
-        # print('')
-        # return net
+
     probs = torch.cat(probs, dim=0)
     preds = torch.round(probs).cpu().numpy()
     probs = probs.cpu().numpy()

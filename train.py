@@ -74,7 +74,6 @@ def split_dataset(dataset, root, logger):
         pid = pid_covid_unique[i]
         fns = pid_fn_dict[pid]
         for fn in fns:
-            # print(i, pid, fns)
             if fn in imgpath_dict:
                 indices_covid_train.append(imgpath_dict[fn])
             else:
@@ -221,9 +220,5 @@ if __name__ == "__main__":
     parser.add_argument('--suffix', type=str, default='test', help='suffix of result directory')
     parser.add_argument('--batchout', action='store_true', help='batch out')
     args = parser.parse_args()
-    # args.ctonly = True
-    # args.seed = 1000
-    # args.model='densenet'
-    # args.bstrain = 16
 
     main()

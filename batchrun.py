@@ -7,12 +7,8 @@ if not os.path.isdir('./batchout'):
         os.mkdir('./batchout')
 
 seeds = [1000,1001,1002,1003,1004,1005,1006,1007,1008,1009]
-# ctonlys = [True, False]
-# mocos = [True, False]
 ablationlevels = [1,2]
-# models = ['mobilenet', 'densenet']
 models = ['mobilenet']
-
 
 ntotal_trials = len(seeds) * len(ablationlevels) * len(models)
 
