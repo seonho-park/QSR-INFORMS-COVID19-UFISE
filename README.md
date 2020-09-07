@@ -4,9 +4,9 @@
 - [x] lung segment augmentation 
 - [x] split test/training set based on patient ID
 - [x] contrastive self-supervised learning (CSSL) loss 
-- [ ] data augmentation (e.g. random cropping)
-- [ ] implement other CNN architectures (DenseNet-BC)
-- [ ] hyperparameter tuning based on multiple tests with different seeds 
+- [x] data augmentation (e.g. random cropping)
+- [x] implement other CNN architectures (DenseNet-BC)
+- [x] hyperparameter tuning based on multiple tests with different seeds 
 
 ### Current Performance
 Tested on AUG 8 2020
@@ -18,6 +18,10 @@ Tested on AUG 8 2020
 Tested on Aug 9 2020
 - AUROC: 0.7430 | AUPR: 0.6281 | F1-score: 0.6549 | Accuracy: 0.6638
 - This is lower than previous result, mainly due to using patient IDs when splitting dataset into training/test datasets
+
+Tested on Sep 7 2020
+- AUROC: 0.953431138
+- For the submission
 
 ## Requirements
 - check requirements.txt
