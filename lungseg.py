@@ -12,7 +12,7 @@ import scipy.ndimage as snd
 import skimage.transform as skt
 from PIL import Image
 
-from Model import ResNetUNet
+from model import ResNetUNet
 import utils
 
 class LungSegDataSet(torch.utils.data.Dataset):

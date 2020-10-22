@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 from dataset import COVID19DataSet
-from Model import mobilenet_v2, densenet121
+from model import mobilenet_v2, densenet121
 import utils
 from test import validate
 
@@ -45,10 +45,10 @@ def train(epoch, net, trainloader, criterion, optimizer, scheduler, model, devic
     scheduler.step()
     return net
 
-def split_dataset(dataset, root, logger):
+def split_dataset(dataset, logger):
     imgpath_dict = {os.path.basename(img_fn): j for j, img_fn in enumerate(dataset.imgs)}
 
-    df_covid = pd.read_excel(os.path.join(root, "CT-MetaInfo.xlsx"), sheet_name='COVID-CT-info')  
+    df_covid = pd.read_excel("./CT-MetaInfo.xlsx", sheet_name='COVID-CT-info')  
     df_covid = df_covid[['File name', 'Patient ID']]
 
     # process COVID
@@ -91,7 +91,7 @@ def split_dataset(dataset, root, logger):
     assert len(indices_covid_train) + len(indices_covid_test) == NUM_COVID
 
     # process NonCOVID
-    df_noncovid = pd.read_excel(os.path.join(root, "CT-MetaInfo.xlsx"), sheet_name='NonCOVID-CT-info')
+    df_noncovid = pd.read_excel("CT-MetaInfo.xlsx", sheet_name='NonCOVID-CT-info')
     df_noncovid = df_noncovid[['image name', 'patient id']]
     fn_noncovid = df_noncovid['image name'].tolist()[:NUM_NONCOVID]
     pid_noncovid = df_noncovid['patient id'].tolist()[:NUM_NONCOVID]
@@ -157,12 +157,12 @@ def main():
     utils.set_seed(args.seed, device) # set random seed
 
     dataset = COVID19DataSet(root = args.datapath, ctonly = args.ctonly) # load dataset
-    trainset, testset = split_dataset(dataset = dataset, root = args.datapath, logger = logger)
+    trainset, testset = split_dataset(dataset = dataset, logger = logger)
     
     if args.model.lower() in ['mobilenet']:
-        net = mobilenet_v2(task = 'classification', moco = args.moco, ctonly = args.ctonly).to(device)
+        net = mobilenet_v2(task = 'classification', moco = False, ctonly = args.ctonly).to(device)
     elif args.model.lower() in ['densenet']:
-        net = densenet121(task = 'classification', moco = args.moco, ctonly = args.ctonly).to(device)
+        net = densenet121(task = 'classification', moco = False, ctonly = args.ctonly).to(device)
     else:
         raise Exception
     
@@ -215,7 +215,6 @@ if __name__ == "__main__":
     parser.add_argument('--nworkers', type=int, default=2, help='the number of workers used in DataLoader')
     parser.add_argument('--maxepoch', type=int, default=100, help='the number of epoches')
     parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
-    parser.add_argument('--moco', action='store_true', help='using moco pretraining')
     parser.add_argument('--ctonly', action='store_true', help='using ctimages only for the input of the network')
     parser.add_argument('--suffix', type=str, default='test', help='suffix of result directory')
     parser.add_argument('--batchout', action='store_true', help='batch out')
