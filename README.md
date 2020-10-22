@@ -8,11 +8,13 @@
 ## Requirements
 * pytorch == 1.5.0
 
+## Methodology
+
 <div align="center">
   <img src="./figs/steps.png" width = '750px'>
 </div>
 
-## STEP 1: Lung segmentation
+### STEP 1: Lung segmentation
 - ResUNet18 based lung segmentation
 - Data: please download and place 2d_images.zip and 2d_masks.zip for the lung segmentation data from the [link](https://www.kaggle.com/kmader/finding-lungs-in-ct-data).
 - Execution
@@ -20,7 +22,7 @@
 python lungseg.py --datapath <datapath>
 ```
 
-## STEP 2: Classification
+### STEP 2: Classification
 - MobileNetv2 is used as a backbone for the classification
 - the input of the model is a grayscaled CT image as well as the lung segmentation output from the step 1
 - Data: please download and place the following data from the [link](https://github.com/UCSD-AI4H/COVID-CT)
