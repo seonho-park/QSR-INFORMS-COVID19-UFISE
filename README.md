@@ -2,7 +2,7 @@
 #### : This is a code repository of the one of the **Finalists** on 2020 INFORMS QSR Industry Data Challenge, CT Scan DIagnosis for COVID-19
 
 > **Seonho Park** (U. of Florida), **Farnaz Babaie Sarijaloo** (U. of Florida), **Bijan Taslimi** (U. of Florida)
-#### Covid-19 pandemic is the most serious concern of this year, 2020. It is necessary to use effective and reliable methods to diagnose COVID-19. Molecular testing by nasal swab testing is one of the testing methods to disgnose COVID-19 but it still has a false negative issue. Computed tomography (CT) scans can be an auxiliary manner for screening and diagnosing COVID-19. This is a convolutional neural network based method by integrating lung segmentation to augment the COVID-19 CT image data
+#### Covid-19 pandemic is the most serious concern of this year, 2020. It is necessary to use effective and reliable methods to diagnose COVID-19. Molecular testing by nasal swab testing is one of the testing methods to disgnose COVID-19 but it still has a false negative issue. Computed tomography (CT) scans can be an auxiliary manner for screening and diagnosing COVID-19. This is a convolutional neural network based COVID-19 CT scan classification by integrating lung segmentation to augment the COVID-19 CT image data
 
 
 ## Requirements
